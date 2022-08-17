@@ -19,7 +19,7 @@ from telegram.ext import (
     CallbackQueryHandler
 )
 
-from motlin_api import get_shop_products, get_access_token
+from motlin_api import get_shop_products, get_access_token, get_product_by_id
 
 
 logger = logging.getLogger(__name__)
@@ -34,19 +34,31 @@ def start(update: Update, context: CallbackContext, motlin_access_token: str):
     keyboard = list(more_itertools.chunked(prepared_keyboard, 2))
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    update.message.reply_text('Please choose:', reply_markup=reply_markup)
-    return "USER_CHOICE"
+    update.message.reply_text(
+        'Пожалуйста, выберите товар:',
+        reply_markup=reply_markup
+    )
+    return "HANDLE_MENU"
 
 
-def button(update, context):
+def button(update, context, motlin_access_token):
     query = update.callback_query
+    product = get_product_by_id(
+        product_id=query.data,
+        api_access_token=motlin_access_token
+    )
+
+    text = f"{product.name}\n\n" \
+           f"Цена: {product.price}\n" \
+           f"В наличии: {product.stock} шт.\n\n" \
+           f"{product.description}"
 
     context.bot.edit_message_text(
-        text="Selected option: {}".format(query.data),
+        text=text,
         chat_id=query.message.chat_id,
         message_id=query.message.message_id
     )
-    return "ECHO"
+    return "START"
 
 
 def echo(update: Update, context: CallbackContext):
@@ -74,7 +86,7 @@ def handle_messages(update: Update, context: CallbackContext,
     states_functions = {
         "START": partial(start, motlin_access_token=motlin_access_token),
         "ECHO": echo,
-        "USER_CHOICE": button
+        "HANDLE_MENU": partial(button, motlin_access_token=motlin_access_token)
     }
     state_handler = states_functions[user_state]
 
