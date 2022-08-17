@@ -7,7 +7,7 @@ from functools import partial
 import redis
 
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Updater,
     CommandHandler,
@@ -21,7 +21,24 @@ logger = logging.getLogger(__name__)
 
 
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text(text='Привет!')
+    keyboard = [[InlineKeyboardButton("Option 1", callback_data="option_1"),
+                 InlineKeyboardButton("Option 2", callback_data="option_2")],
+                [InlineKeyboardButton("Option 3", callback_data="option_3")]
+                ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    update.message.reply_text('Please choose:', reply_markup=reply_markup)
+    return "USER_CHOICE"
+
+
+def button(update, context):
+    query = update.callback_query
+
+    context.bot.edit_message_text(
+        text="Selected option: {}".format(query.data),
+        chat_id=query.message.chat_id,
+        message_id=query.message.message_id
+    )
     return "ECHO"
 
 
@@ -41,15 +58,15 @@ def handle_messages(update: Update, context: CallbackContext, database):
         return
 
     users = json.loads(database.get("users").decode("utf-8"))
-
     if user_reply == "/start":
         user_state = "START"
     else:
         user_state = users[chat_id]
 
     states_functions = {
-        'START': start,
-        "ECHO": echo
+        "START": start,
+        "ECHO": echo,
+        "USER_CHOICE": button
     }
     state_handler = states_functions[user_state]
 
