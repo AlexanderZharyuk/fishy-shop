@@ -1,2 +1,2 @@
-worker: python3 bot/motlin_api.py
+worker: python3 bot/moltin_api.py
 bot: python3 bot/main.py

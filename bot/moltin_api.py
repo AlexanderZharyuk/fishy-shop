@@ -18,20 +18,20 @@ class Product(NamedTuple):
     id: str
 
 
-def get_access_token(motlin_client_id: str, motlin_client_secret: str) -> str:
+def get_access_token(moltin_client_id: str, moltin_client_secret: str) -> str:
     url = "https://api.moltin.com/oauth/access_token"
     request_data = {
-        "client_id": motlin_client_id,
+        "client_id": moltin_client_id,
         "grant_type": "client_credentials",
-        "client_secret": motlin_client_secret
+        "client_secret": moltin_client_secret
     }
 
     response = requests.post(url=url, data=request_data)
     response.raise_for_status()
 
     api_response = response.json()
-    motlin_access_token = api_response["access_token"]
-    return motlin_access_token
+    moltin_access_token = api_response["access_token"]
+    return moltin_access_token
 
 
 def get_shop_products(api_access_token: str) -> dict:
@@ -173,14 +173,14 @@ def create_customer(api_access_token: str, user_id: str, user_email: str):
 
 
 def main():
-    motlin_client_id = os.environ["MOTLIN_CLIENT_ID"]
-    motlin_client_secret = os.environ["MOTLIN_CLIENT_SECRET"]
+    moltin_client_id = os.environ["MOLTIN_CLIENT_ID"]
+    moltin_client_secret = os.environ["MOLTIN_CLIENT_SECRET"]
 
     access_token = get_access_token(
-        motlin_client_id=motlin_client_id,
-        motlin_client_secret=motlin_client_secret
+        moltin_client_id=moltin_client_id,
+        moltin_client_secret=moltin_client_secret
     )
-    database.set("motlin_access_token", access_token)
+    database.set("moltin_access_token", access_token)
 
 
 if __name__ == "__main__":
@@ -194,7 +194,5 @@ if __name__ == "__main__":
         password=redis_password
     )
     while True:
-        # API-токен motlin обновляется каждый час (3600 секунд).
-        # Исходя из этого обновляем его значение в редисе каждый час.
         main()
         time.sleep(3500)

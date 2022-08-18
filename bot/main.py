@@ -18,7 +18,7 @@ from telegram.ext import (
     CallbackQueryHandler
 )
 
-from motlin_api import (
+from moltin_api import (
     get_shop_products,
     get_product_by_id,
     get_product_image_link,
@@ -33,10 +33,9 @@ from motlin_api import (
 logger = logging.getLogger(__name__)
 
 
-def prepare_and_send_menu_message(update, context,
-                                          motlin_access_token,
-                                          on_start=False):
-    goods = get_shop_products(motlin_access_token)["data"]
+def prepare_and_send_menu_message(update, context, moltin_access_token,
+                                  on_start=False):
+    goods = get_shop_products(moltin_access_token)["data"]
     prepared_keyboard = [
         InlineKeyboardButton(item["name"], callback_data=item["id"])
         for item in goods
@@ -66,10 +65,10 @@ def prepare_and_send_menu_message(update, context,
         )
 
 
-def prepare_and_send_cart_message(update, context, motlin_access_token):
+def prepare_and_send_cart_message(update, context, moltin_access_token):
     items_in_order = get_items_from_cart(
         user_id=update.callback_query.from_user.id,
-        api_access_token=motlin_access_token
+        api_access_token=moltin_access_token
     )["data"]
 
     prepared_items = []
@@ -114,7 +113,7 @@ def prepare_and_send_cart_message(update, context, motlin_access_token):
 
     user_cart = get_user_cart(
         user_id=update.callback_query.from_user.id,
-        api_access_token=motlin_access_token
+        api_access_token=moltin_access_token
     )
     total_amount = user_cart["data"]["meta"]["display_price"]["with_tax"][
         "formatted"]
@@ -132,28 +131,28 @@ def prepare_and_send_cart_message(update, context, motlin_access_token):
     )
 
 
-def start(update: Update, context: CallbackContext, motlin_access_token: str):
+def start(update: Update, context: CallbackContext, moltin_access_token: str):
     prepare_and_send_menu_message(
         update,
         context,
-        motlin_access_token,
+        moltin_access_token,
         on_start=True
     )
     return "HANDLE_MENU"
 
 
-def buttons(update: Update, context: CallbackContext, motlin_access_token):
+def buttons(update: Update, context: CallbackContext, moltin_access_token):
     query = update.callback_query
     if query.data == "cart":
-        prepare_and_send_cart_message(update, context, motlin_access_token)
+        prepare_and_send_cart_message(update, context, moltin_access_token)
         return "HANDLE_CART"
 
     product = get_product_by_id(
         product_id=query.data,
-        api_access_token=motlin_access_token
+        api_access_token=moltin_access_token
     )
 
-    image_link = get_product_image_link(product.image_id, motlin_access_token)
+    image_link = get_product_image_link(product.image_id, moltin_access_token)
     image_extension = download_product_image(
         image_link=image_link,
         product_id=product.id
@@ -192,24 +191,24 @@ def buttons(update: Update, context: CallbackContext, motlin_access_token):
 
 
 def return_to_menu(update: Update, context: CallbackContext,
-                   motlin_access_token: str):
+                   moltin_access_token: str):
     user_reply = update.callback_query.data
     if user_reply == "back_to_menu":
         prepare_and_send_menu_message(
             update,
             context,
-            motlin_access_token
+            moltin_access_token
         )
         return "HANDLE_MENU"
 
     if user_reply == "cart":
-        prepare_and_send_cart_message(update, context, motlin_access_token)
+        prepare_and_send_cart_message(update, context, moltin_access_token)
         return "HANDLE_CART"
 
     product_id, quantity = user_reply.split("_")
     product = get_product_by_id(
         product_id=product_id,
-        api_access_token=motlin_access_token
+        api_access_token=moltin_access_token
     )
     update.callback_query.answer(
         text=f"Товар {product.name} в количестве {quantity}шт. "
@@ -219,24 +218,24 @@ def return_to_menu(update: Update, context: CallbackContext,
 
     add_item_to_cart(
         user_id=update.callback_query.from_user.id,
-        api_access_token=motlin_access_token,
+        api_access_token=moltin_access_token,
         item=product,
         quantity=quantity
     )
     return "HANDLE_DESCRIPTION"
 
 
-def go_to_cart(update: Update, context: CallbackContext, motlin_access_token):
+def go_to_cart(update: Update, context: CallbackContext, moltin_access_token):
     query = update.callback_query
     if query.data == "back_to_menu":
-        prepare_and_send_menu_message(update, context, motlin_access_token)
+        prepare_and_send_menu_message(update, context, moltin_access_token)
         return "HANDLE_MENU"
 
     if "delete" in query.data:
         deleted_product_id, _ = query.data.split("_")
         deleted_product = get_product_by_id(
             deleted_product_id,
-            motlin_access_token
+            moltin_access_token
         )
 
         update.callback_query.answer(
@@ -246,14 +245,14 @@ def go_to_cart(update: Update, context: CallbackContext, motlin_access_token):
 
         delete_item_from_cart(
             cart_id=update.callback_query.from_user.id,
-            api_access_token=motlin_access_token,
+            api_access_token=moltin_access_token,
             item=deleted_product
         )
 
         prepare_and_send_cart_message(
             update=update,
             context=context,
-            motlin_access_token=motlin_access_token
+            moltin_access_token=moltin_access_token
         )
         return "HANDLE_CART"
 
@@ -271,10 +270,10 @@ def go_to_cart(update: Update, context: CallbackContext, motlin_access_token):
 
 
 def get_customer_email(update: Update, context: CallbackContext,
-                       motlin_access_token: str):
+                       moltin_access_token: str):
     user_email = update.message.text
     create_customer(
-        api_access_token=motlin_access_token,
+        api_access_token=moltin_access_token,
         user_email=user_email,
         user_id=update.message.from_user.id
     )
@@ -283,7 +282,7 @@ def get_customer_email(update: Update, context: CallbackContext,
 
 def handle_messages(update: Update, context: CallbackContext,
                     database: redis):
-    motlin_access_token = database.get("motlin_access_token").decode("UTF-8")
+    moltin_access_token = database.get("moltin_access_token").decode("UTF-8")
     if update.message:
         user_reply = update.message.text
         chat_id = str(update.message.chat_id)
@@ -300,18 +299,18 @@ def handle_messages(update: Update, context: CallbackContext,
         user_state = users[chat_id]
 
     states_functions = {
-        "START": partial(start, motlin_access_token=motlin_access_token),
+        "START": partial(start, moltin_access_token=moltin_access_token),
         "HANDLE_MENU": partial(
-            buttons, motlin_access_token=motlin_access_token
+            buttons, moltin_access_token=moltin_access_token
         ),
         "HANDLE_DESCRIPTION": partial(
-            return_to_menu, motlin_access_token=motlin_access_token
+            return_to_menu, moltin_access_token=moltin_access_token
         ),
         "HANDLE_CART": partial(
-            go_to_cart, motlin_access_token=motlin_access_token
+            go_to_cart, moltin_access_token=moltin_access_token
         ),
         "WAITING_EMAIL": partial(
-            get_customer_email, motlin_access_token=motlin_access_token
+            get_customer_email, moltin_access_token=moltin_access_token
         )
     }
     state_handler = states_functions[user_state]
