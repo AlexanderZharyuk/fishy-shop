@@ -1,8 +1,12 @@
 import os
+import time
 
 from typing import NamedTuple
 
 import requests
+import redis
+
+from dotenv import load_dotenv
 
 
 class Product(NamedTuple):
@@ -27,7 +31,6 @@ def get_access_token(motlin_client_id: str, motlin_client_secret: str) -> str:
 
     api_response = response.json()
     motlin_access_token = api_response["access_token"]
-    os.environ["MOTLIN_ACCESS_TOKEN"] = motlin_access_token
     return motlin_access_token
 
 
@@ -168,8 +171,26 @@ def create_customer(api_access_token: str, user_id: str, user_email: str):
 
 
 def main():
-    pass
+    motlin_client_id = os.environ["MOTLIN_CLIENT_ID"]
+    motlin_client_secret = os.environ["MOTLIN_CLIENT_SECRET"]
+
+    access_token = get_access_token(
+        motlin_client_id=motlin_client_id,
+        motlin_client_secret=motlin_client_secret
+    )
+    database.set("motlin_access_token", access_token)
 
 
 if __name__ == "__main__":
-    main()
+    load_dotenv()
+    redis_host = os.environ["REDIS_HOST"]
+    redis_port = os.environ["REDIS_PORT"]
+    redis_password = os.environ["REDIS_PASSWORD"]
+    database = redis.Redis(
+        host=redis_host,
+        port=redis_port,
+        password=redis_password
+    )
+    while True:
+        main()
+        time.sleep(3500)

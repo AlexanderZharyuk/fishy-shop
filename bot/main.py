@@ -20,7 +20,6 @@ from telegram.ext import (
 
 from motlin_api import (
     get_shop_products,
-    get_access_token,
     get_product_by_id,
     get_product_image_link,
     download_product_image,
@@ -28,9 +27,8 @@ from motlin_api import (
     get_user_cart,
     get_items_from_cart,
     delete_item_from_cart,
-    create_customer
+    create_customer,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -286,7 +284,8 @@ def get_customer_email(update: Update, context: CallbackContext,
 
 
 def handle_messages(update: Update, context: CallbackContext,
-                    database: redis, motlin_access_token: str):
+                    database: redis):
+    motlin_access_token = database.get("motlin_access_token").decode("UTF-8")
     if update.message:
         user_reply = update.message.text
         chat_id = str(update.message.chat_id)
@@ -335,13 +334,6 @@ def main():
     redis_host = os.environ["REDIS_HOST"]
     redis_port = os.environ["REDIS_PORT"]
     redis_password = os.environ["REDIS_PASSWORD"]
-    motlin_client_id = os.environ["MOTLIN_CLIENT_ID"]
-    motlin_client_secret = os.environ["MOTLIN_CLIENT_SECRET"]
-
-    motlin_access_token = get_access_token(
-        motlin_client_id=motlin_client_id,
-        motlin_client_secret=motlin_client_secret
-    )
 
     database = redis.Redis(
         host=redis_host,
@@ -360,7 +352,6 @@ def main():
             partial(
                 handle_messages,
                 database=database,
-                motlin_access_token=motlin_access_token
             )
         )
     )
@@ -370,7 +361,6 @@ def main():
             partial(
                 handle_messages,
                 database=database,
-                motlin_access_token=motlin_access_token
             )
         )
     )
@@ -380,7 +370,6 @@ def main():
             partial(
                 handle_messages,
                 database=database,
-                motlin_access_token=motlin_access_token
             )
         )
     )
