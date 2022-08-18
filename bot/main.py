@@ -35,13 +35,16 @@ from motlin_api import (
 logger = logging.getLogger(__name__)
 
 
-def prepare_and_send_back_to_menu_message(update, context, motlin_access_token):
+def prepare_and_send_back_to_menu_message(update, context,
+                                          motlin_access_token):
     goods = get_shop_products(motlin_access_token)["data"]
     prepared_keyboard = [
         InlineKeyboardButton(item["name"], callback_data=item["id"])
         for item in goods
     ]
-    prepared_keyboard.append(InlineKeyboardButton("Корзина", callback_data="cart"))
+    prepared_keyboard.append(
+        InlineKeyboardButton("Корзина", callback_data="cart")
+    )
     keyboard = list(more_itertools.chunked(prepared_keyboard, 2))
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -82,7 +85,8 @@ def prepare_and_send_cart(update, context, motlin_access_token):
         order_description = f"{item['name']}\n" \
                             f"{item['description']}\n" \
                             f"{item['price_per_unit']} за 1 штуку.\n" \
-                            f"В корзине {item['quantity']} шт. на сумму {item['price']}\n\n"
+                            f"В корзине {item['quantity']} шт. на сумму " \
+                            f"{item['price']}\n\n"
         message_text += order_description
 
     prepared_keyboard = []
@@ -128,7 +132,9 @@ def start(update: Update, context: CallbackContext, motlin_access_token: str):
         InlineKeyboardButton(item["name"], callback_data=item["id"])
         for item in goods
     ]
-    prepared_keyboard.append(InlineKeyboardButton("Корзина", callback_data="cart"))
+    prepared_keyboard.append(
+        InlineKeyboardButton("Корзина", callback_data="cart")
+    )
     keyboard = list(more_itertools.chunked(prepared_keyboard, 2))
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -188,10 +194,15 @@ def buttons(update: Update, context: CallbackContext, motlin_access_token):
     return "HANDLE_DESCRIPTION"
 
 
-def return_to_menu(update: Update, context: CallbackContext, motlin_access_token):
+def return_to_menu(update: Update, context: CallbackContext,
+                   motlin_access_token: str):
     user_reply = update.callback_query.data
     if user_reply == "back_to_menu":
-        prepare_and_send_back_to_menu_message(update, context, motlin_access_token)
+        prepare_and_send_back_to_menu_message(
+            update,
+            context,
+            motlin_access_token
+        )
         return "HANDLE_MENU"
 
     if user_reply == "cart":
@@ -227,7 +238,10 @@ def go_to_cart(update: Update, context: CallbackContext, motlin_access_token):
 
     if "delete" in query.data:
         deleted_product_id, _ = query.data.split("_")
-        deleted_product = get_product_by_id(deleted_product_id, motlin_access_token)
+        deleted_product = get_product_by_id(
+            deleted_product_id,
+            motlin_access_token
+        )
 
         update.callback_query.answer(
             text=f"Товар {deleted_product.name} удален из корзины.",
