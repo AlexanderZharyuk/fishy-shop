@@ -27,11 +27,94 @@ from motlin_api import (
     download_product_image,
     add_item_to_cart,
     get_user_cart,
-    get_items_from_cart
+    get_items_from_cart,
+    delete_item_from_cart
 )
 
 
 logger = logging.getLogger(__name__)
+
+
+def prepare_and_send_back_to_menu_message(update, context, motlin_access_token):
+    goods = get_shop_products(motlin_access_token)["data"]
+    prepared_keyboard = [
+        InlineKeyboardButton(item["name"], callback_data=item["id"])
+        for item in goods
+    ]
+    prepared_keyboard.append(InlineKeyboardButton("Корзина", callback_data="cart"))
+    keyboard = list(more_itertools.chunked(prepared_keyboard, 2))
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    context.bot.deleteMessage(
+        chat_id=update.callback_query.message.chat_id,
+        message_id=update.callback_query.message.message_id
+    )
+
+    context.bot.send_message(
+        chat_id=update.callback_query.message.chat_id,
+        text='Пожалуйста, выберите товар:',
+        reply_markup=reply_markup
+    )
+
+
+def prepare_and_send_cart(update, context, motlin_access_token):
+    items_in_order = get_items_from_cart(
+        user_id=update.callback_query.from_user.id,
+        api_access_token=motlin_access_token
+    )["data"]
+
+    prepared_items = []
+    for item in items_in_order:
+        prepared_item = {
+            "product_id": item["product_id"],
+            "name": item["name"],
+            "description": item["description"],
+            "quantity": item["quantity"],
+            "price": item["meta"]["display_price"]["with_tax"]["value"][
+                "formatted"],
+            "price_per_unit":
+                item["meta"]["display_price"]["with_tax"]["unit"]["formatted"]
+        }
+        prepared_items.append(prepared_item)
+
+    message_text = ""
+    for item in prepared_items:
+        order_description = f"{item['name']}\n" \
+                            f"{item['description']}\n" \
+                            f"{item['price_per_unit']} за 1 штуку.\n" \
+                            f"В корзине {item['quantity']} шт. на сумму {item['price']}\n\n"
+        message_text += order_description
+
+    prepared_keyboard = []
+    for item in prepared_items:
+        button = InlineKeyboardButton(
+            f"Убрать из корзины {item['name']}",
+            callback_data=f"{item['product_id']}_delete")
+        prepared_keyboard.append(button)
+
+    prepared_keyboard.append(InlineKeyboardButton(
+        "В меню", callback_data="back_to_menu"))
+    keyboard = list(more_itertools.chunked(prepared_keyboard, 1))
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    user_cart = get_user_cart(
+        user_id=update.callback_query.from_user.id,
+        api_access_token=motlin_access_token
+    )
+    total_amount = user_cart["data"]["meta"]["display_price"]["with_tax"][
+        "formatted"]
+    message_text += f"Итого: {total_amount}"
+
+    context.bot.deleteMessage(
+        chat_id=update.callback_query.message.chat_id,
+        message_id=update.callback_query.message.message_id
+    )
+
+    context.bot.send_message(
+        chat_id=update.callback_query.message.chat_id,
+        text=message_text,
+        reply_markup=reply_markup
+    )
 
 
 def start(update: Update, context: CallbackContext, motlin_access_token: str):
@@ -40,6 +123,7 @@ def start(update: Update, context: CallbackContext, motlin_access_token: str):
         InlineKeyboardButton(item["name"], callback_data=item["id"])
         for item in goods
     ]
+    prepared_keyboard.append(InlineKeyboardButton("Корзина", callback_data="cart"))
     keyboard = list(more_itertools.chunked(prepared_keyboard, 2))
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -52,6 +136,10 @@ def start(update: Update, context: CallbackContext, motlin_access_token: str):
 
 def buttons(update: Update, context: CallbackContext, motlin_access_token):
     query = update.callback_query
+    if query.data == "cart":
+        prepare_and_send_cart(update, context, motlin_access_token)
+        return "HANDLE_CART"
+
     product = get_product_by_id(
         product_id=query.data,
         api_access_token=motlin_access_token
@@ -98,63 +186,12 @@ def buttons(update: Update, context: CallbackContext, motlin_access_token):
 def return_to_menu(update: Update, context: CallbackContext, motlin_access_token):
     user_reply = update.callback_query.data
     if user_reply == "back_to_menu":
-        goods = get_shop_products(motlin_access_token)["data"]
-        prepared_keyboard = [
-            InlineKeyboardButton(item["name"], callback_data=item["id"])
-            for item in goods
-        ]
-        keyboard = list(more_itertools.chunked(prepared_keyboard, 2))
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        context.bot.deleteMessage(
-            chat_id=update.callback_query.message.chat_id,
-            message_id=update.callback_query.message.message_id
-        )
-
-        context.bot.send_message(
-            chat_id=update.callback_query.message.chat_id,
-            text='Пожалуйста, выберите товар:',
-            reply_markup=reply_markup
-        )
+        prepare_and_send_back_to_menu_message(update, context, motlin_access_token)
         return "HANDLE_MENU"
 
     if user_reply == "cart":
-        items_in_order = get_items_from_cart(
-            user_id=update.callback_query.from_user.id,
-            api_access_token=motlin_access_token
-        )["data"]
-        prepared_items = []
-        for item in items_in_order:
-            prepared_item = {
-                "product_id": item["product_id"],
-                "name": item["name"],
-                "description": item["description"],
-                "quantity": item["quantity"],
-                "price": item["meta"]["display_price"]["with_tax"]["value"]["formatted"],
-                "price_per_unit": item["meta"]["display_price"]["with_tax"]["unit"]["formatted"]
-            }
-            prepared_items.append(prepared_item)
-
-        message_text = ""
-        for item in prepared_items:
-            order_description = f"{item['name']}\n" \
-                                f"{item['description']}\n" \
-                                f"{item['price_per_unit']} за 1 штуку.\n" \
-                                f"В корзине {item['quantity']} шт. на сумму {item['price']}\n\n"
-            message_text += order_description
-
-        user_cart = get_user_cart(
-            user_id=update.callback_query.from_user.id,
-            api_access_token=motlin_access_token
-        )
-        total_amount = user_cart["data"]["meta"]["display_price"]["with_tax"]["formatted"]
-        message_text += f"Итого: {total_amount}"
-
-        context.bot.send_message(
-            chat_id=update.callback_query.message.chat_id,
-            text=message_text
-        )
-        return "HANDLE_DESCRIPTION"
+        prepare_and_send_cart(update, context, motlin_access_token)
+        return "HANDLE_CART"
 
     product_id, quantity = user_reply.split("_")
     product = get_product_by_id(
@@ -170,8 +207,22 @@ def return_to_menu(update: Update, context: CallbackContext, motlin_access_token
     return "HANDLE_DESCRIPTION"
 
 
-def go_to_cart(update: Update, context: CallbackContext):
-    pass
+def go_to_cart(update: Update, context: CallbackContext, motlin_access_token):
+    query = update.callback_query
+    if query.data == "back_to_menu":
+        prepare_and_send_back_to_menu_message(update, context,
+                                              motlin_access_token)
+        return "HANDLE_MENU"
+
+    deleted_product_id, _ = query.data.split("_")
+    deleted_product = get_product_by_id(deleted_product_id, motlin_access_token)
+
+    delete_item_from_cart(
+        cart_id=update.callback_query.from_user.id,
+        api_access_token=motlin_access_token,
+        item=deleted_product
+    )
+    return "HANDLE_CART"
 
 
 def echo(update: Update, context: CallbackContext):
@@ -199,8 +250,15 @@ def handle_messages(update: Update, context: CallbackContext,
     states_functions = {
         "START": partial(start, motlin_access_token=motlin_access_token),
         "ECHO": echo,
-        "HANDLE_MENU": partial(buttons, motlin_access_token=motlin_access_token),
-        "HANDLE_DESCRIPTION": partial(return_to_menu, motlin_access_token=motlin_access_token)
+        "HANDLE_MENU": partial(
+            buttons, motlin_access_token=motlin_access_token
+        ),
+        "HANDLE_DESCRIPTION": partial(
+            return_to_menu, motlin_access_token=motlin_access_token
+        ),
+        "HANDLE_CART": partial(
+            go_to_cart, motlin_access_token=motlin_access_token
+        ),
     }
     state_handler = states_functions[user_state]
 

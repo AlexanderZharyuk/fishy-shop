@@ -92,6 +92,20 @@ def get_items_from_cart(user_id: str, api_access_token: str) -> dict:
     return api_response
 
 
+def delete_item_from_cart(cart_id: str, api_access_token: str, item: Product):
+    product_id_in_cart = [product["id"] for product in get_items_from_cart(
+            cart_id, api_access_token)["data"] if
+        product["product_id"] == item.id][0]
+
+    url = f"https://api.moltin.com/v2/carts/{cart_id}/items/{product_id_in_cart}"
+    headers = {
+        "Authorization": f"Bearer {api_access_token}",
+    }
+
+    response = requests.delete(url=url, headers=headers)
+    response.raise_for_status()
+
+
 def get_product_by_id(product_id: str, api_access_token: str) -> Product:
     url = f"https://api.moltin.com/v2/products/{product_id}"
     headers = {
