@@ -58,7 +58,8 @@ def get_user_cart(user_id: str, api_access_token: str) -> dict:
     return api_response
 
 
-def add_item_to_cart(user_id: str, api_access_token: str, item: dict) -> None:
+def add_item_to_cart(user_id: str, api_access_token: str,
+                     item: Product, quantity: str) -> None:
     url = f"https://api.moltin.com/v2/carts/{user_id}/items"
     headers = {
         "Authorization": f"Bearer {api_access_token}",
@@ -66,12 +67,11 @@ def add_item_to_cart(user_id: str, api_access_token: str, item: dict) -> None:
     }
     payload = {
         "data": {
-            "type": "custom_item",
-            "name": item["name"],
-            "sku": item["sku"],
-            "description": item["description"],
-            "quantity": 1,
-            "price": item["price"][0]
+            "type": "cart_item",
+            "id": item.id,
+            "name": item.name,
+            "description": item.description,
+            "quantity": int(quantity),
         }
     }
 

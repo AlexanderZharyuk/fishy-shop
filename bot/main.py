@@ -24,7 +24,9 @@ from motlin_api import (
     get_access_token,
     get_product_by_id,
     get_product_image_link,
-    download_product_image
+    download_product_image,
+    add_item_to_cart,
+    get_user_cart
 )
 
 
@@ -64,7 +66,14 @@ def buttons(update: Update, context: CallbackContext, motlin_access_token):
            f"Цена: {product.price}\n" \
            f"В наличии: {product.stock} шт.\n\n" \
            f"{product.description}\n"
-    keyboard = [[InlineKeyboardButton("Назад", callback_data="back_to_menu")]]
+    keyboard = [
+        [
+            InlineKeyboardButton("1", callback_data=f"{product.id}_1"),
+            InlineKeyboardButton("3", callback_data=f"{product.id}_3"),
+            InlineKeyboardButton("5", callback_data=f"{product.id}_5")
+        ],
+        [InlineKeyboardButton("Назад", callback_data="back_to_menu")]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     with open(f"goods_images/{product_image_filename}", "rb") as image:
@@ -105,6 +114,19 @@ def return_to_menu(update: Update, context: CallbackContext, motlin_access_token
         )
         return "HANDLE_MENU"
 
+    product_id, quantity = user_reply.split("_")
+    product = get_product_by_id(
+        product_id=product_id,
+        api_access_token=motlin_access_token
+    )
+    add_item_to_cart(
+        user_id=update.callback_query.from_user.id,
+        api_access_token=motlin_access_token,
+        item=product,
+        quantity=quantity
+    )
+    return "HANDLE_DESCRIPTION"
+
 
 def echo(update: Update, context: CallbackContext):
     update.message.reply_text(update.message.text)
@@ -136,12 +158,9 @@ def handle_messages(update: Update, context: CallbackContext,
     }
     state_handler = states_functions[user_state]
 
-    try:
-        next_state = state_handler(update, context)
-        users[chat_id] = next_state
-        database.set("users", json.dumps(users))
-    except Exception as err:
-        print(err)
+    next_state = state_handler(update, context)
+    users[chat_id] = next_state
+    database.set("users", json.dumps(users))
 
 
 def main():
