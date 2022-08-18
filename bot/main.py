@@ -1,7 +1,6 @@
 import logging
 import os
 import json
-import pprint
 
 from functools import partial
 
@@ -28,7 +27,8 @@ from motlin_api import (
     add_item_to_cart,
     get_user_cart,
     get_items_from_cart,
-    delete_item_from_cart
+    delete_item_from_cart,
+    create_customer
 )
 
 
@@ -92,8 +92,13 @@ def prepare_and_send_cart(update, context, motlin_access_token):
             callback_data=f"{item['product_id']}_delete")
         prepared_keyboard.append(button)
 
-    prepared_keyboard.append(InlineKeyboardButton(
-        "В меню", callback_data="back_to_menu"))
+    prepared_keyboard.append(
+        InlineKeyboardButton("Оформить заказ", callback_data="order")
+    )
+    prepared_keyboard.append(
+        InlineKeyboardButton("В меню", callback_data="back_to_menu")
+    )
+
     keyboard = list(more_itertools.chunked(prepared_keyboard, 1))
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -198,6 +203,12 @@ def return_to_menu(update: Update, context: CallbackContext, motlin_access_token
         product_id=product_id,
         api_access_token=motlin_access_token
     )
+    update.callback_query.answer(
+        text=f"Товар {product.name} в количестве {quantity}шт. "
+             f"добавлен в корзину",
+        show_alert=True
+    )
+
     add_item_to_cart(
         user_id=update.callback_query.from_user.id,
         api_access_token=motlin_access_token,
@@ -214,20 +225,50 @@ def go_to_cart(update: Update, context: CallbackContext, motlin_access_token):
                                               motlin_access_token)
         return "HANDLE_MENU"
 
-    deleted_product_id, _ = query.data.split("_")
-    deleted_product = get_product_by_id(deleted_product_id, motlin_access_token)
+    if "delete" in query.data:
+        deleted_product_id, _ = query.data.split("_")
+        deleted_product = get_product_by_id(deleted_product_id, motlin_access_token)
 
-    delete_item_from_cart(
-        cart_id=update.callback_query.from_user.id,
+        update.callback_query.answer(
+            text=f"Товар {deleted_product.name} удален из корзины.",
+            show_alert=True
+        )
+
+        delete_item_from_cart(
+            cart_id=update.callback_query.from_user.id,
+            api_access_token=motlin_access_token,
+            item=deleted_product
+        )
+
+        prepare_and_send_cart(
+            update=update,
+            context=context,
+            motlin_access_token=motlin_access_token
+        )
+        return "HANDLE_CART"
+
+    if query.data == "order":
+        context.bot.deleteMessage(
+            chat_id=update.callback_query.message.chat_id,
+            message_id=update.callback_query.message.message_id
+        )
+
+        context.bot.send_message(
+            chat_id=update.callback_query.message.chat_id,
+            text="Укажите, пожалуйста, ваш емейл:"
+        )
+        return "WAITING_EMAIL"
+
+
+def get_customer_email(update: Update, context: CallbackContext,
+                       motlin_access_token: str):
+    user_email = update.message.text
+    create_customer(
         api_access_token=motlin_access_token,
-        item=deleted_product
+        user_email=user_email,
+        user_id=update.message.from_user.id
     )
-    return "HANDLE_CART"
-
-
-def echo(update: Update, context: CallbackContext):
-    update.message.reply_text(update.message.text)
-    return "ECHO"
+    return "WAITING_EMAIL"
 
 
 def handle_messages(update: Update, context: CallbackContext,
@@ -249,7 +290,6 @@ def handle_messages(update: Update, context: CallbackContext,
 
     states_functions = {
         "START": partial(start, motlin_access_token=motlin_access_token),
-        "ECHO": echo,
         "HANDLE_MENU": partial(
             buttons, motlin_access_token=motlin_access_token
         ),
@@ -259,6 +299,9 @@ def handle_messages(update: Update, context: CallbackContext,
         "HANDLE_CART": partial(
             go_to_cart, motlin_access_token=motlin_access_token
         ),
+        "WAITING_EMAIL": partial(
+            get_customer_email, motlin_access_token=motlin_access_token
+        )
     }
     state_handler = states_functions[user_state]
 
@@ -279,8 +322,11 @@ def main():
     redis_port = os.environ["REDIS_PORT"]
     redis_password = os.environ["REDIS_PASSWORD"]
     motlin_client_id = os.environ["MOTLIN_CLIENT_ID"]
+    motlin_client_secret = os.environ["MOTLIN_CLIENT_SECRET"]
+
     motlin_access_token = get_access_token(
-        motlin_client_id=motlin_client_id
+        motlin_client_id=motlin_client_id,
+        motlin_client_secret=motlin_client_secret
     )
 
     database = redis.Redis(

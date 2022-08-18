@@ -4,8 +4,6 @@ from typing import NamedTuple
 
 import requests
 
-from dotenv import load_dotenv
-
 
 class Product(NamedTuple):
     name: str
@@ -16,11 +14,12 @@ class Product(NamedTuple):
     id: str
 
 
-def get_access_token(motlin_client_id: str) -> str:
+def get_access_token(motlin_client_id: str, motlin_client_secret: str) -> str:
     url = "https://api.moltin.com/oauth/access_token"
     request_data = {
-        'client_id': motlin_client_id,
-        'grant_type': 'implicit',
+        "client_id": motlin_client_id,
+        "grant_type": "client_credentials",
+        "client_secret": motlin_client_secret
     }
 
     response = requests.post(url=url, data=request_data)
@@ -152,23 +151,24 @@ def download_product_image(image_link: str, product_id: str) -> str:
     return file_extension
 
 
+def create_customer(api_access_token: str, user_id: str, user_email: str):
+    url = "https://api.moltin.com/v2/customers"
+    headers = {
+        "Authorization": f"Bearer {api_access_token}",
+    }
+    payload = {
+        "data": {
+            "type": "customer",
+            "name": str(user_id),
+            "email": user_email
+        }
+    }
+    response = requests.post(url=url, headers=headers, json=payload)
+    response.raise_for_status()
+
+
 def main():
-    load_dotenv()
-    motlin_client_id = os.environ["MOTLIN_CLIENT_ID"]
-    motlin_access_token = get_access_token(motlin_client_id)
-    all_products = get_shop_products(motlin_access_token)
-    product_id = all_products["data"][1]["id"]
-    user_choice = all_products["data"][1]["relationships"]["main_image"]["data"]["id"]
-    image_link = get_product_image_link(user_choice, motlin_access_token)
-    download_product_image(image_link, product_id=product_id)
-    # get_product_image(image_id=image_id, api_access_token=motlin_access_token)
-    # user_id = "abc"
-    # add_item_to_cart(
-    #     user_id=user_id,
-    #     api_access_token=motlin_access_token,
-    #     item=user_choice
-    # )
-    # get_items_from_cart(user_id=user_id, api_access_token=motlin_access_token)
+    pass
 
 
 if __name__ == "__main__":
