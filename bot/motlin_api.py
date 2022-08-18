@@ -147,6 +147,8 @@ def download_product_image(image_link: str, product_id: str) -> str:
     response.raise_for_status()
 
     _, file_extension = os.path.splitext(image_link)
+    os.makedirs("goods_images", exist_ok=True)
+
     filename = f"goods_images/{product_id}{file_extension}"
     with open(filename, "wb") as image_file:
         image_file.write(response.content)
@@ -192,5 +194,7 @@ if __name__ == "__main__":
         password=redis_password
     )
     while True:
+        # API-токен motlin обновляется каждый час (3600 секунд).
+        # Исходя из этого обновляем его значение в редисе каждый час.
         main()
         time.sleep(3500)
