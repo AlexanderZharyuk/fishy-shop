@@ -47,7 +47,7 @@ def start(update: Update, context: CallbackContext, motlin_access_token: str):
     return "HANDLE_MENU"
 
 
-def button(update: Update, context: CallbackContext, motlin_access_token):
+def buttons(update: Update, context: CallbackContext, motlin_access_token):
     query = update.callback_query
     product = get_product_by_id(
         product_id=query.data,
@@ -64,19 +64,46 @@ def button(update: Update, context: CallbackContext, motlin_access_token):
            f"Цена: {product.price}\n" \
            f"В наличии: {product.stock} шт.\n\n" \
            f"{product.description}\n"
+    keyboard = [[InlineKeyboardButton("Назад", callback_data="back_to_menu")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
     with open(f"goods_images/{product_image_filename}", "rb") as image:
         context.bot.send_photo(
             caption=text,
             chat_id=query.message.chat_id,
-            photo=image
+            photo=image,
+            reply_markup=reply_markup
         )
 
     context.bot.deleteMessage(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id
     )
-    return "START"
+    return "HANDLE_DESCRIPTION"
+
+
+def return_to_menu(update: Update, context: CallbackContext, motlin_access_token):
+    user_reply = update.callback_query.data
+    if user_reply == "back_to_menu":
+        goods = get_shop_products(motlin_access_token)["data"]
+        prepared_keyboard = [
+            InlineKeyboardButton(item["name"], callback_data=item["id"])
+            for item in goods
+        ]
+        keyboard = list(more_itertools.chunked(prepared_keyboard, 2))
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        context.bot.deleteMessage(
+            chat_id=update.callback_query.message.chat_id,
+            message_id=update.callback_query.message.message_id
+        )
+
+        context.bot.send_message(
+            chat_id=update.callback_query.message.chat_id,
+            text='Пожалуйста, выберите товар:',
+            reply_markup=reply_markup
+        )
+        return "HANDLE_MENU"
 
 
 def echo(update: Update, context: CallbackContext):
@@ -104,7 +131,8 @@ def handle_messages(update: Update, context: CallbackContext,
     states_functions = {
         "START": partial(start, motlin_access_token=motlin_access_token),
         "ECHO": echo,
-        "HANDLE_MENU": partial(button, motlin_access_token=motlin_access_token)
+        "HANDLE_MENU": partial(buttons, motlin_access_token=motlin_access_token),
+        "HANDLE_DESCRIPTION": partial(return_to_menu, motlin_access_token=motlin_access_token)
     }
     state_handler = states_functions[user_state]
 
