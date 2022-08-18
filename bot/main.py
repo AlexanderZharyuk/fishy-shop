@@ -26,7 +26,8 @@ from motlin_api import (
     get_product_image_link,
     download_product_image,
     add_item_to_cart,
-    get_user_cart
+    get_user_cart,
+    get_items_from_cart
 )
 
 
@@ -72,7 +73,10 @@ def buttons(update: Update, context: CallbackContext, motlin_access_token):
             InlineKeyboardButton("3", callback_data=f"{product.id}_3"),
             InlineKeyboardButton("5", callback_data=f"{product.id}_5")
         ],
-        [InlineKeyboardButton("Назад", callback_data="back_to_menu")]
+        [
+            InlineKeyboardButton("Назад", callback_data="back_to_menu"),
+            InlineKeyboardButton("Корзина", callback_data="cart")
+        ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -114,6 +118,44 @@ def return_to_menu(update: Update, context: CallbackContext, motlin_access_token
         )
         return "HANDLE_MENU"
 
+    if user_reply == "cart":
+        items_in_order = get_items_from_cart(
+            user_id=update.callback_query.from_user.id,
+            api_access_token=motlin_access_token
+        )["data"]
+        prepared_items = []
+        for item in items_in_order:
+            prepared_item = {
+                "product_id": item["product_id"],
+                "name": item["name"],
+                "description": item["description"],
+                "quantity": item["quantity"],
+                "price": item["meta"]["display_price"]["with_tax"]["value"]["formatted"],
+                "price_per_unit": item["meta"]["display_price"]["with_tax"]["unit"]["formatted"]
+            }
+            prepared_items.append(prepared_item)
+
+        message_text = ""
+        for item in prepared_items:
+            order_description = f"{item['name']}\n" \
+                                f"{item['description']}\n" \
+                                f"{item['price_per_unit']} за 1 штуку.\n" \
+                                f"В корзине {item['quantity']} шт. на сумму {item['price']}\n\n"
+            message_text += order_description
+
+        user_cart = get_user_cart(
+            user_id=update.callback_query.from_user.id,
+            api_access_token=motlin_access_token
+        )
+        total_amount = user_cart["data"]["meta"]["display_price"]["with_tax"]["formatted"]
+        message_text += f"Итого: {total_amount}"
+
+        context.bot.send_message(
+            chat_id=update.callback_query.message.chat_id,
+            text=message_text
+        )
+        return "HANDLE_DESCRIPTION"
+
     product_id, quantity = user_reply.split("_")
     product = get_product_by_id(
         product_id=product_id,
@@ -126,6 +168,10 @@ def return_to_menu(update: Update, context: CallbackContext, motlin_access_token
         quantity=quantity
     )
     return "HANDLE_DESCRIPTION"
+
+
+def go_to_cart(update: Update, context: CallbackContext):
+    pass
 
 
 def echo(update: Update, context: CallbackContext):
