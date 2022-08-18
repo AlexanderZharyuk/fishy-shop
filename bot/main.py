@@ -19,7 +19,13 @@ from telegram.ext import (
     CallbackQueryHandler
 )
 
-from motlin_api import get_shop_products, get_access_token, get_product_by_id
+from motlin_api import (
+    get_shop_products,
+    get_access_token,
+    get_product_by_id,
+    get_product_image_link,
+    download_product_image
+)
 
 
 logger = logging.getLogger(__name__)
@@ -41,20 +47,32 @@ def start(update: Update, context: CallbackContext, motlin_access_token: str):
     return "HANDLE_MENU"
 
 
-def button(update, context, motlin_access_token):
+def button(update: Update, context: CallbackContext, motlin_access_token):
     query = update.callback_query
     product = get_product_by_id(
         product_id=query.data,
         api_access_token=motlin_access_token
     )
 
+    image_link = get_product_image_link(product.image_id, motlin_access_token)
+    image_extension = download_product_image(
+        image_link=image_link,
+        product_id=product.id
+    )
+    product_image_filename = f"{product.id}{image_extension}"
     text = f"{product.name}\n\n" \
            f"Цена: {product.price}\n" \
            f"В наличии: {product.stock} шт.\n\n" \
-           f"{product.description}"
+           f"{product.description}\n"
 
-    context.bot.edit_message_text(
-        text=text,
+    with open(f"goods_images/{product_image_filename}", "rb") as image:
+        context.bot.send_photo(
+            caption=text,
+            chat_id=query.message.chat_id,
+            photo=image
+        )
+
+    context.bot.deleteMessage(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id
     )
