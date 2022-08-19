@@ -35,8 +35,7 @@ from moltin_api import (
 logger = logging.getLogger(__name__)
 
 
-def prepare_and_send_menu_message(update, context, moltin_access_token,
-                                  on_start=False):
+def setup_menu_keyboard(moltin_access_token):
     goods = get_shop_products(moltin_access_token)["data"]
     prepared_keyboard = [
         InlineKeyboardButton(item["name"], callback_data=item["id"])
@@ -47,26 +46,10 @@ def prepare_and_send_menu_message(update, context, moltin_access_token,
     )
     keyboard = list(more_itertools.chunked(prepared_keyboard, 2))
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-    if not on_start:
-        context.bot.delete_message(
-            chat_id=update.callback_query.message.chat_id,
-            message_id=update.callback_query.message.message_id
-        )
-
-        context.bot.send_message(
-            chat_id=update.callback_query.message.chat_id,
-            text='Пожалуйста, выберите товар:',
-            reply_markup=reply_markup
-        )
-    else:
-        update.message.reply_text(
-            'Пожалуйста, выберите товар:',
-            reply_markup=reply_markup
-        )
+    return reply_markup
 
 
-def prepare_and_send_cart_message(update, context, moltin_access_token):
+def prepare_cart_message(update: Update, moltin_access_token: str):
     items_in_order = get_items_from_cart(
         user_id=update.callback_query.from_user.id,
         api_access_token=moltin_access_token
@@ -89,13 +72,13 @@ def prepare_and_send_cart_message(update, context, moltin_access_token):
     message_text = ""
     for item in prepared_items:
         order_description = f"""\
-        {item['name']}
-        {item['description']}
-        
-        {item['price_per_unit']} за 1 штуку.
-        В корзине {item['quantity']} шт. на сумму {item['price']}
-        
-        """
+            {item['name']}
+            {item['description']}
+
+            {item['price_per_unit']} за 1 штуку.
+            В корзине {item['quantity']} шт. на сумму {item['price']}
+
+            """
         message_text += dedent(order_description)
 
     prepared_keyboard = []
@@ -122,6 +105,34 @@ def prepare_and_send_cart_message(update, context, moltin_access_token):
     total_amount = user_cart["data"]["meta"]["display_price"]["with_tax"][
         "formatted"]
     message_text += f"Итого: {total_amount}"
+    return message_text, reply_markup
+
+
+def send_menu_message(update, context, moltin_access_token, on_start=False):
+    reply_markup = setup_menu_keyboard(moltin_access_token=moltin_access_token)
+    if not on_start:
+        context.bot.delete_message(
+            chat_id=update.callback_query.message.chat_id,
+            message_id=update.callback_query.message.message_id
+        )
+
+        context.bot.send_message(
+            chat_id=update.callback_query.message.chat_id,
+            text='Пожалуйста, выберите товар:',
+            reply_markup=reply_markup
+        )
+    else:
+        update.message.reply_text(
+            'Пожалуйста, выберите товар:',
+            reply_markup=reply_markup
+        )
+
+
+def send_cart_message(update, context, moltin_access_token):
+    message_text, reply_markup = prepare_cart_message(
+        update,
+        moltin_access_token
+    )
 
     context.bot.delete_message(
         chat_id=update.callback_query.message.chat_id,
@@ -136,7 +147,7 @@ def prepare_and_send_cart_message(update, context, moltin_access_token):
 
 
 def start(update: Update, context: CallbackContext, moltin_access_token: str):
-    prepare_and_send_menu_message(
+    send_menu_message(
         update,
         context,
         moltin_access_token,
@@ -149,7 +160,7 @@ def handling_press_buttons(update: Update, context: CallbackContext,
                            moltin_access_token):
     query = update.callback_query
     if query.data == "cart":
-        prepare_and_send_cart_message(update, context, moltin_access_token)
+        send_cart_message(update, context, moltin_access_token)
         return "HANDLE_CART"
 
     product = get_product_by_id(
@@ -203,7 +214,7 @@ def return_to_menu(update: Update, context: CallbackContext,
                    moltin_access_token: str):
     user_reply = update.callback_query.data
     if user_reply == "back_to_menu":
-        prepare_and_send_menu_message(
+        send_menu_message(
             update,
             context,
             moltin_access_token
@@ -211,7 +222,7 @@ def return_to_menu(update: Update, context: CallbackContext,
         return "HANDLE_MENU"
 
     if user_reply == "cart":
-        prepare_and_send_cart_message(update, context, moltin_access_token)
+        send_cart_message(update, context, moltin_access_token)
         return "HANDLE_CART"
 
     product_id, quantity = user_reply.split("_")
@@ -237,7 +248,7 @@ def return_to_menu(update: Update, context: CallbackContext,
 def go_to_cart(update: Update, context: CallbackContext, moltin_access_token):
     query = update.callback_query
     if query.data == "back_to_menu":
-        prepare_and_send_menu_message(update, context, moltin_access_token)
+        send_menu_message(update, context, moltin_access_token)
         return "HANDLE_MENU"
 
     if "delete" in query.data:
@@ -258,7 +269,7 @@ def go_to_cart(update: Update, context: CallbackContext, moltin_access_token):
             item=deleted_product
         )
 
-        prepare_and_send_cart_message(
+        send_cart_message(
             update=update,
             context=context,
             moltin_access_token=moltin_access_token
@@ -289,7 +300,7 @@ def get_customer_email(update: Update, context: CallbackContext,
         return "WAITING_EMAIL"
     else:
         update.message.reply_text("С вами скоро свяжутся!")
-        prepare_and_send_menu_message(
+        send_menu_message(
             update,
             context,
             moltin_access_token,
