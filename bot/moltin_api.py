@@ -29,8 +29,8 @@ def get_access_token(moltin_client_id: str, moltin_client_secret: str) -> str:
     response = requests.post(url=url, data=request_data)
     response.raise_for_status()
 
-    api_response = response.json()
-    moltin_access_token = api_response["access_token"]
+    moltin = response.json()
+    moltin_access_token = moltin["access_token"]
     return moltin_access_token
 
 
@@ -42,9 +42,9 @@ def get_shop_products(api_access_token: str) -> dict:
 
     response = requests.get(url=url, headers=headers)
     response.raise_for_status()
-    api_response = response.json()
+    moltin = response.json()
 
-    return api_response
+    return moltin
 
 
 def get_user_cart(user_id: str, api_access_token: str) -> dict:
@@ -56,8 +56,8 @@ def get_user_cart(user_id: str, api_access_token: str) -> dict:
     response = requests.get(url=url, headers=headers)
     response.raise_for_status()
 
-    api_response = response.json()
-    return api_response
+    moltin = response.json()
+    return moltin
 
 
 def add_item_to_cart(user_id: str, api_access_token: str,
@@ -90,8 +90,8 @@ def get_items_from_cart(user_id: str, api_access_token: str) -> dict:
     response = requests.get(url=url, headers=headers)
     response.raise_for_status()
 
-    api_response = response.json()
-    return api_response
+    moltin = response.json()
+    return moltin
 
 
 def delete_item_from_cart(cart_id: str, api_access_token: str, item: Product):
@@ -117,12 +117,12 @@ def get_product_by_id(product_id: str, api_access_token: str) -> Product:
     response = requests.get(url=url, headers=headers)
     response.raise_for_status()
 
-    api_response = response.json()
-    product_name = api_response["data"]["name"]
-    product_price = api_response["data"]["meta"]["display_price"]["without_tax"]["formatted"]
-    product_stock = api_response["data"]["meta"]["stock"]["level"]
-    product_description = api_response["data"]["description"]
-    product_image_id = api_response["data"]["relationships"]["main_image"]["data"]["id"]
+    moltin = response.json()
+    product_name = moltin["data"]["name"]
+    product_price = moltin["data"]["meta"]["display_price"]["without_tax"]["formatted"]
+    product_stock = moltin["data"]["meta"]["stock"]["level"]
+    product_description = moltin["data"]["description"]
+    product_image_id = moltin["data"]["relationships"]["main_image"]["data"]["id"]
     return Product(name=product_name, price=product_price,
                    stock=product_stock, description=product_description,
                    image_id=product_image_id, id=product_id)
@@ -137,8 +137,8 @@ def get_product_image_link(image_id: str, api_access_token: str) -> str:
     response = requests.get(url=url, headers=headers)
     response.raise_for_status()
 
-    api_response = response.json()
-    product_image = api_response["data"]["link"]["href"]
+    moltin = response.json()
+    product_image = moltin["data"]["link"]["href"]
     return product_image
 
 
