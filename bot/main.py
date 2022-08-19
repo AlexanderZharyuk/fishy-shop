@@ -141,7 +141,8 @@ def start(update: Update, context: CallbackContext, moltin_access_token: str):
     return "HANDLE_MENU"
 
 
-def buttons(update: Update, context: CallbackContext, moltin_access_token):
+def handling_press_buttons(update: Update, context: CallbackContext,
+                           moltin_access_token):
     query = update.callback_query
     if query.data == "cart":
         prepare_and_send_cart_message(update, context, moltin_access_token)
@@ -301,7 +302,7 @@ def handle_messages(update: Update, context: CallbackContext,
     states_functions = {
         "START": partial(start, moltin_access_token=moltin_access_token),
         "HANDLE_MENU": partial(
-            buttons, moltin_access_token=moltin_access_token
+            handling_press_buttons, moltin_access_token=moltin_access_token
         ),
         "HANDLE_DESCRIPTION": partial(
             return_to_menu, moltin_access_token=moltin_access_token
