@@ -4,9 +4,8 @@ import time
 from typing import NamedTuple
 
 import requests
-import redis
 
-from dotenv import load_dotenv
+from requests.exceptions import HTTPError
 
 
 class Product(NamedTuple):
@@ -32,6 +31,19 @@ def get_access_token(moltin_client_id: str, moltin_client_secret: str) -> str:
     moltin = response.json()
     moltin_access_token = moltin["access_token"]
     return moltin_access_token
+
+
+def get_access_token_status(access_token: str):
+    url = "https://api.moltin.com/v2/products"
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    try:
+        response = requests.get(url, headers)
+        response.raise_for_status()
+    except HTTPError:
+        return False
+    return True
 
 
 def get_shop_products(api_access_token: str) -> dict:
@@ -170,29 +182,3 @@ def create_customer(api_access_token: str, user_id: str, user_email: str):
     }
     response = requests.post(url=url, headers=headers, json=payload)
     response.raise_for_status()
-
-
-def main():
-    moltin_client_id = os.environ["MOLTIN_CLIENT_ID"]
-    moltin_client_secret = os.environ["MOLTIN_CLIENT_SECRET"]
-
-    access_token = get_access_token(
-        moltin_client_id=moltin_client_id,
-        moltin_client_secret=moltin_client_secret
-    )
-    database.set("moltin_access_token", access_token)
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    redis_host = os.environ["REDIS_HOST"]
-    redis_port = os.environ["REDIS_PORT"]
-    redis_password = os.environ["REDIS_PASSWORD"]
-    database = redis.Redis(
-        host=redis_host,
-        port=redis_port,
-        password=redis_password
-    )
-    while True:
-        main()
-        time.sleep(3500)

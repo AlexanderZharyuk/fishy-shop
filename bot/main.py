@@ -30,6 +30,8 @@ from moltin_api import (
     get_items_from_cart,
     delete_item_from_cart,
     create_customer,
+    get_access_token_status,
+    get_access_token
 )
 
 logger = logging.getLogger(__name__)
@@ -315,8 +317,16 @@ def get_customer_email(update: Update, context: CallbackContext,
 
 
 def handle_messages(update: Update, context: CallbackContext,
-                    database: redis):
+                    database: redis, moltin_client_id: str,
+                    moltin_client_secret: str):
     moltin_access_token = database.get("moltin_access_token").decode("UTF-8")
+    if not get_access_token_status(moltin_access_token):
+        moltin_access_token = get_access_token(
+            moltin_client_id=moltin_client_id,
+            moltin_client_secret=moltin_client_secret
+        )
+        database.set("moltin_access_token", moltin_access_token)
+
     if update.message:
         user_reply = update.message.text
         chat_id = str(update.message.chat_id)
@@ -365,6 +375,8 @@ def main():
     redis_host = os.environ["REDIS_HOST"]
     redis_port = os.environ["REDIS_PORT"]
     redis_password = os.environ["REDIS_PASSWORD"]
+    moltin_client_id = os.environ["MOLTIN_CLIENT_ID"]
+    moltin_client_secret = os.environ["MOLTIN_CLIENT_SECRET"]
 
     database = redis.Redis(
         host=redis_host,
@@ -383,6 +395,8 @@ def main():
             partial(
                 handle_messages,
                 database=database,
+                moltin_client_id=moltin_client_id,
+                moltin_client_secret=moltin_client_secret
             )
         )
     )
@@ -392,6 +406,8 @@ def main():
             partial(
                 handle_messages,
                 database=database,
+                moltin_client_id=moltin_client_id,
+                moltin_client_secret=moltin_client_secret
             )
         )
     )
@@ -401,6 +417,8 @@ def main():
             partial(
                 handle_messages,
                 database=database,
+                moltin_client_id=moltin_client_id,
+                moltin_client_secret=moltin_client_secret
             )
         )
     )
