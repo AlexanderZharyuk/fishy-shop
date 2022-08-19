@@ -3,6 +3,7 @@ import os
 import json
 
 from functools import partial
+from textwrap import dedent
 
 import redis
 import more_itertools
@@ -87,12 +88,15 @@ def prepare_and_send_cart_message(update, context, moltin_access_token):
 
     message_text = ""
     for item in prepared_items:
-        order_description = f"{item['name']}\n" \
-                            f"{item['description']}\n" \
-                            f"{item['price_per_unit']} за 1 штуку.\n" \
-                            f"В корзине {item['quantity']} шт. на сумму " \
-                            f"{item['price']}\n\n"
-        message_text += order_description
+        order_description = f"""\
+        {item['name']}
+        {item['description']}
+        
+        {item['price_per_unit']} за 1 штуку.
+        В корзине {item['quantity']} шт. на сумму {item['price']}
+        
+        """
+        message_text += dedent(order_description)
 
     prepared_keyboard = []
     for item in prepared_items:
@@ -159,10 +163,14 @@ def handling_press_buttons(update: Update, context: CallbackContext,
         product_id=product.id
     )
     product_image_filename = f"{product.id}{image_extension}"
-    text = f"{product.name}\n\n" \
-           f"Цена: {product.price}\n" \
-           f"В наличии: {product.stock} шт.\n\n" \
-           f"{product.description}\n"
+    text = dedent(f"""\
+    {product.name}
+    {product.description}
+
+    Цена: {product.price}
+    В наличии: {product.stock} шт.
+    """)
+
     keyboard = [
         [
             InlineKeyboardButton("1", callback_data=f"{product.id}_1"),
