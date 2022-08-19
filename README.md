@@ -26,11 +26,8 @@ REDIS_PASSWORD=<REDIS-PASSWORD>
 
 Запуск бота осуществляется командами:
 ```shell
-python3 bot/moltin_api.py
 python3 bots/main.py
 ```
-Запуск файла `moltin_api.py` **обязателен**!
-При его помощи обновляется токен в БД от API каждый час, если его не запустить, то токен устареет и бот не будет работать
 
 ### ▽ Автор
 * [Alexander Zharyuk](https://github.com/AlexanderZharyuk)
