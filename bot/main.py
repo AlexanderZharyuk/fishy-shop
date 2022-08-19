@@ -17,6 +17,7 @@ from telegram.ext import (
     CallbackContext,
     CallbackQueryHandler
 )
+from email_validator import validate_email, EmailNotValidError
 
 from moltin_api import (
     get_shop_products,
@@ -273,12 +274,26 @@ def go_to_cart(update: Update, context: CallbackContext, moltin_access_token):
 def get_customer_email(update: Update, context: CallbackContext,
                        moltin_access_token: str):
     user_email = update.message.text
-    create_customer(
-        api_access_token=moltin_access_token,
-        user_email=user_email,
-        user_id=update.message.from_user.id
-    )
-    return "WAITING_EMAIL"
+    try:
+        validate_email(user_email).email
+    except EmailNotValidError:
+        update.message.reply_text("Вы вели невалидный email, "
+                                  "попробуйте еще раз")
+        return "WAITING_EMAIL"
+    else:
+        update.message.reply_text("С вами скоро свяжутся!")
+        prepare_and_send_menu_message(
+            update,
+            context,
+            moltin_access_token,
+            on_start=True
+        )
+        create_customer(
+            api_access_token=moltin_access_token,
+            user_email=user_email,
+            user_id=update.message.from_user.id
+        )
+        return "HANDLE_MENU"
 
 
 def handle_messages(update: Update, context: CallbackContext,
