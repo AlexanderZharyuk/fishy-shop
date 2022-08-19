@@ -48,11 +48,10 @@ def prepare_and_send_menu_message(update, context, moltin_access_token,
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if not on_start:
-        context.bot.deleteMessage(
+        context.bot.delete_message(
             chat_id=update.callback_query.message.chat_id,
             message_id=update.callback_query.message.message_id
         )
-
 
         context.bot.send_message(
             chat_id=update.callback_query.message.chat_id,
@@ -120,7 +119,7 @@ def prepare_and_send_cart_message(update, context, moltin_access_token):
         "formatted"]
     message_text += f"Итого: {total_amount}"
 
-    context.bot.deleteMessage(
+    context.bot.delete_message(
         chat_id=update.callback_query.message.chat_id,
         message_id=update.callback_query.message.message_id
     )
@@ -185,7 +184,7 @@ def handling_press_buttons(update: Update, context: CallbackContext,
             reply_markup=reply_markup
         )
 
-    context.bot.deleteMessage(
+    context.bot.delete_message(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id
     )
@@ -259,7 +258,7 @@ def go_to_cart(update: Update, context: CallbackContext, moltin_access_token):
         return "HANDLE_CART"
 
     if query.data == "order":
-        context.bot.deleteMessage(
+        context.bot.delete_message(
             chat_id=update.callback_query.message.chat_id,
             message_id=update.callback_query.message.message_id
         )
