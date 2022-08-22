@@ -2,6 +2,7 @@ import logging
 import os
 import json
 
+from datetime import datetime
 from functools import partial
 from textwrap import dedent
 
@@ -30,7 +31,6 @@ from moltin_api import (
     get_items_from_cart,
     delete_item_from_cart,
     create_customer,
-    get_access_token_status,
     get_access_token
 )
 
@@ -319,13 +319,29 @@ def get_customer_email(update: Update, context: CallbackContext,
 def handle_messages(update: Update, context: CallbackContext,
                     database: redis, moltin_client_id: str,
                     moltin_client_secret: str):
-    moltin_access_token = database.get("moltin_access_token").decode("UTF-8")
-    if not get_access_token_status(moltin_access_token):
+    try:
+        database.get("moltin_access_token").decode()
+    except AttributeError:
+        get_access_token(
+            moltin_client_id=moltin_client_id,
+            moltin_client_secret=moltin_client_secret,
+            database=database
+        )
+
+    database_response = database.get("moltin_access_token").decode()
+    moltin_api = json.loads(database_response)
+    moltin_access_token = moltin_api["access_token"]
+    access_token_expire_time = moltin_api["expire_time"]
+
+    current_time = datetime.now()
+    timestamp = int(datetime.timestamp(current_time))
+
+    if timestamp > access_token_expire_time:
         moltin_access_token = get_access_token(
             moltin_client_id=moltin_client_id,
-            moltin_client_secret=moltin_client_secret
+            moltin_client_secret=moltin_client_secret,
+            database=database
         )
-        database.set("moltin_access_token", moltin_access_token)
 
     if update.message:
         user_reply = update.message.text

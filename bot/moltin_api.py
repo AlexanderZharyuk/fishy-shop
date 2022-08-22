@@ -1,10 +1,9 @@
 import os
+import json
 
 from typing import NamedTuple
 
 import requests
-
-from requests.exceptions import HTTPError
 
 
 class Product(NamedTuple):
@@ -16,7 +15,8 @@ class Product(NamedTuple):
     id: str
 
 
-def get_access_token(moltin_client_id: str, moltin_client_secret: str) -> str:
+def get_access_token(moltin_client_id: str, moltin_client_secret: str,
+                     database) -> str:
     url = "https://api.moltin.com/oauth/access_token"
     request_data = {
         "client_id": moltin_client_id,
@@ -29,20 +29,13 @@ def get_access_token(moltin_client_id: str, moltin_client_secret: str) -> str:
 
     moltin = response.json()
     moltin_access_token = moltin["access_token"]
-    return moltin_access_token
-
-
-def get_access_token_status(access_token: str):
-    url = "https://api.moltin.com/v2/products"
-    headers = {
-        "Authorization": f"Bearer {access_token}"
+    moltin_expire_time = moltin["expires"]
+    token = {
+        "access_token": moltin_access_token,
+        "expire_time": moltin_expire_time
     }
-    try:
-        response = requests.get(url, headers)
-        response.raise_for_status()
-    except HTTPError:
-        return False
-    return True
+    database.set("moltin_access_token", json.dumps(token, ensure_ascii=True))
+    return moltin_access_token
 
 
 def get_shop_products(api_access_token: str) -> dict:
