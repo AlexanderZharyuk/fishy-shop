@@ -1,16 +1,13 @@
 # FISHY SHOP
-Бот-магазин по продаже рыбы.
+Telegram-Bot shop selling fish.
 
-Ссылка на бота:
-* [Telegram](https://t.me/FishyStoreBot)
-
-### ▽ Начало работы
-Для начала работы необходимо установить зависимости и библиотеки:
+### ▽ Getting Started
+To get started, you need to install dependencies and libraries:
 ```shell
 pip install -r requirements.txt
 ```
 
-После чего создать `.env`-файл с переменными окружения:
+Then create a `.env` file with environment variables:
 ```
 MOLTIN_CLIENT_ID=<MOLTIN-CLIENT-ID>
 MOLTIN_CLIENT_SECRET=<MOLTIN-CLIENT-SECRET>
@@ -20,14 +17,14 @@ REDIS_PORT=<REDIS-PORT>
 REDIS_PASSWORD=<REDIS-PASSWORD>
 ```
 
-- Для получения БД Redis и доступа к ней, обратитесь к официальному сайту [Redis](https://redis.com/).
-- Для получения секретных данных сервиса [moltin](https://www.elasticpath.com/) - перейдите на главную страницу вашего магазина.
+- To obtain and access the Redis database, refer to the official website of [Redis](https://redis.com/).
+- To get the secret data of the service [moltin](https://www.elasticpath.com/) - go to the main page of your store.
 
 
-Запуск бота осуществляется командами:
+The bot is launched by the commands:
 ```shell
-python3 bots/main.py
+python3bots/main.py
 ```
 
-### ▽ Автор
+### ▽ Author
 * [Alexander Zharyuk](https://github.com/AlexanderZharyuk)
